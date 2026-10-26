@@ -24,7 +24,7 @@ When something grows past a few lines here, move it into the right project folde
 
 ## The loop
 
-`fetch → react 👀 → do the work → comment → close`, run per open ticket. See `.claude/skills/factory-loop/SKILL.md`. Start it with `/factory-loop`, or `/loop 1m /factory-loop` to keep polling.
+`fetch → react 👀 → do the work → verify → comment → close`, run per open ticket. Builds go through clarify → plan → approval → build → browser check with screenshots. Nothing destructive, and every stop auto-commits and pushes. See `.claude/skills/factory-loop/SKILL.md`. Start it with `/factory-loop`, or `/loop 1m /factory-loop` to keep polling.
 
 ## Index
 
@@ -35,7 +35,9 @@ When something grows past a few lines here, move it into the right project folde
 | `CLAUDE.md` | This file: root index and factory rules |
 | `README.md` | Workshop brief: how tickets, scoring and pushing work |
 | `.claude/skills/factory-loop/` | The ticket loop skill: fetch, react, comment, close |
-| `.claude/settings.json` | Project permissions (allows `gh issue comment` and `gh issue close`) |
+| `.claude/settings.json` | Permissions (`gh issue comment`/`close`) and the Stop hook |
+| `.claude/hooks/` | Stop hook scripts: log prompts to `.claude/prompts.jsonl`, then auto-commit and push |
+| `.mcp.json` | `chrome-devtools` MCP server, driving Microsoft Edge for browser verification |
 
 ### Projects
 

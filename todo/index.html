@@ -4,39 +4,189 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Todo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { --bg: #f6f7f9; --card: #fff; --text: #1d2330; --muted: #6b7280; --accent: #2563eb; --border: #e5e7eb; --danger: #dc2626; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #0f1115; --card: #181b22; --text: #e6e8ee; --muted: #9aa1ad; --accent: #60a5fa; --border: #2a2f3a; --danger: #f87171; }
+  /* Flat design, teal palette (ui-ux-pro-max "Todo" design system). */
+  :root {
+    --primary: #0F766E;          /* teal-700: 5.5:1 with white text */
+    --primary-hover: #115E59;
+    --secondary: #14B8A6;
+    --bg: #F0FDFA;
+    --fg: #134E4A;
+    --card: #FFFFFF;
+    --muted: #E8F1F4;
+    --muted-fg: #475569;
+    --border: #CCFBF1;
+    --border-strong: #99F6E4;
+    --destructive: #DC2626;
+    --ring: #0D9488;
+    --radius: 12px;
+    --ease: 180ms ease;
   }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --primary: #14B8A6;
+      --primary-hover: #2DD4BF;
+      --bg: #042F2E;
+      --fg: #CCFBF1;
+      --card: #083F3C;
+      --muted: #0B4A46;
+      --muted-fg: #94A3B8;
+      --border: #115E59;
+      --border-strong: #0F766E;
+      --destructive: #F87171;
+      --ring: #2DD4BF;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :root { --ease: 0s; }
+  }
+
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, sans-serif; }
-  main { max-width: 520px; margin: 48px auto; padding: 0 16px; }
-  h1 { font-size: 1.6rem; margin: 0 0 16px; }
-  form { display: flex; gap: 8px; margin-bottom: 16px; }
-  input[type=text] { flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; }
-  button { font: inherit; border: 0; border-radius: 8px; cursor: pointer; }
-  .add { padding: 10px 16px; background: var(--accent); color: #fff; }
-  ul { list-style: none; margin: 0; padding: 0; }
-  li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; }
-  li span { flex: 1; word-break: break-word; }
-  li.done span { text-decoration: line-through; color: var(--muted); }
-  input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); }
-  .delete { background: none; color: var(--danger); padding: 4px 8px; }
-  .empty, .count { color: var(--muted); font-size: .9rem; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.5 "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 560px; margin: 0 auto; padding: 56px 16px 40px; }
+
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+  h1 { margin: 0; font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; }
+  .count { color: var(--muted-fg); font-size: .9rem; font-weight: 500; }
+
+  /* New task */
+  form { display: flex; gap: 8px; margin-bottom: 20px; }
+  .field { flex: 1; position: relative; }
+  .field input {
+    width: 100%; height: 48px; padding: 0 16px;
+    background: var(--card); color: var(--fg);
+    border: 2px solid var(--border); border-radius: var(--radius);
+    font: inherit; transition: border-color var(--ease);
+  }
+  .field input::placeholder { color: var(--muted-fg); }
+  .field input:focus { outline: none; border-color: var(--ring); }
+
+  button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+  :focus-visible { outline: 3px solid var(--ring); outline-offset: 2px; }
+
+  .add {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 48px; padding: 0 18px;
+    background: var(--primary); color: #fff;
+    border-radius: var(--radius); font-weight: 600;
+    transition: background-color var(--ease);
+  }
+  @media (prefers-color-scheme: dark) { .add { color: #042F2E; } }
+  .add:hover { background: var(--primary-hover); }
+  .add svg { width: 20px; height: 20px; }
+
+  /* Filters */
+  .filters { display: flex; gap: 4px; padding: 4px; margin-bottom: 16px; background: var(--muted); border-radius: var(--radius); }
+  .filters button {
+    flex: 1; min-height: 40px; border-radius: 9px;
+    color: var(--muted-fg); font-weight: 600; font-size: .9rem;
+    transition: background-color var(--ease), color var(--ease);
+  }
+  .filters button:hover { color: var(--fg); }
+  .filters button[aria-pressed="true"] { background: var(--card); color: var(--fg); }
+
+  /* List */
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  li {
+    display: flex; align-items: center; gap: 12px;
+    min-height: 56px; padding: 6px 6px 6px 14px;
+    background: var(--card); border: 2px solid var(--border); border-radius: var(--radius);
+    transition: border-color var(--ease);
+  }
+  li:hover { border-color: var(--border-strong); }
+
+  .check {
+    flex: none; display: grid; place-items: center;
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 2px solid var(--secondary);
+    transition: background-color var(--ease), border-color var(--ease);
+  }
+  .check svg { width: 16px; height: 16px; color: #fff; opacity: 0; transition: opacity var(--ease); }
+  .check:hover { background: var(--muted); }
+  li.done .check { background: var(--primary); border-color: var(--primary); }
+  li.done .check svg { opacity: 1; }
+  @media (prefers-color-scheme: dark) { .check svg { color: #042F2E; } }
+
+  .title { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: 500; transition: color var(--ease); }
+  li.done .title { color: var(--muted-fg); text-decoration: line-through; }
+
+  .delete {
+    flex: none; display: grid; place-items: center;
+    width: 44px; height: 44px; border-radius: 10px;
+    color: var(--muted-fg); transition: color var(--ease), background-color var(--ease);
+  }
+  .delete:hover { color: var(--destructive); background: var(--muted); }
+  .delete svg { width: 20px; height: 20px; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 40px 16px; color: var(--muted-fg); }
+  .empty svg { width: 48px; height: 48px; color: var(--secondary); margin-bottom: 8px; }
+  .empty p { margin: 0; }
+  .empty strong { display: block; color: var(--fg); font-weight: 600; margin-bottom: 2px; }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  @media (max-width: 420px) {
+    main { padding-top: 32px; }
+    h1 { font-size: 1.6rem; }
+    .add span { display: none; }
+    .add { padding: 0 14px; }
+  }
 </style>
 </head>
 <body>
 <main>
-  <h1>Todo</h1>
+  <header>
+    <h1>Todo</h1>
+    <span class="count" id="count" aria-live="polite"></span>
+  </header>
+
   <form id="new-task">
-    <input type="text" id="title" placeholder="What needs doing?" autocomplete="off" required>
-    <button class="add" type="submit">Add</button>
+    <div class="field">
+      <label for="title" class="sr-only">New task</label>
+      <input type="text" id="title" placeholder="What needs doing?" autocomplete="off" maxlength="200" required>
+    </div>
+    <button class="add" type="submit">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <span>Add</span>
+    </button>
   </form>
+
+  <div class="filters" role="group" aria-label="Filter tasks">
+    <button type="button" data-filter="all" aria-pressed="true">All</button>
+    <button type="button" data-filter="active" aria-pressed="false">Active</button>
+    <button type="button" data-filter="done" aria-pressed="false">Done</button>
+  </div>
+
   <ul id="list"></ul>
-  <p class="empty" id="empty">No tasks yet.</p>
-  <p class="count" id="count"></p>
+
+  <div class="empty" id="empty" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+    <p><strong id="empty-title">No tasks yet</strong><span id="empty-hint">Add your first one above.</span></p>
+  </div>
 </main>
+
+<template id="task-template">
+  <li>
+    <button type="button" class="check">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>
+    </button>
+    <span class="title"></span>
+    <button type="button" class="delete">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>
+    </button>
+  </li>
+</template>
+
 <script>
 // Tasks live in IndexedDB (a client-side database), so they persist across reloads.
 const DB_NAME = 'todo-app';
@@ -70,30 +220,39 @@ const tasks = {
 const list = document.getElementById('list');
 const empty = document.getElementById('empty');
 const count = document.getElementById('count');
+const template = document.getElementById('task-template');
+const filterButtons = document.querySelectorAll('[data-filter]');
+let filter = 'all';
+
+const EMPTY_TEXT = {
+  all: ['No tasks yet', 'Add your first one above.'],
+  active: ['All caught up', 'Nothing left to do.'],
+  done: ['Nothing done yet', 'Completed tasks show up here.'],
+};
 
 function render(db, items) {
-  list.replaceChildren(...items.map(task => {
-    const li = document.createElement('li');
-    li.className = task.done ? 'done' : '';
+  const visible = items.filter(t => filter === 'all' || (filter === 'done') === t.done);
 
-    const check = document.createElement('input');
-    check.type = 'checkbox';
-    check.checked = task.done;
-    check.setAttribute('aria-label', 'Mark done');
-    check.onchange = async () => { await tasks.put(db, { ...task, done: check.checked }); refresh(db); };
+  list.replaceChildren(...visible.map(task => {
+    const li = template.content.firstElementChild.cloneNode(true);
+    li.classList.toggle('done', task.done);
+    li.querySelector('.title').textContent = task.title;
 
-    const title = document.createElement('span');
-    title.textContent = task.title;
+    const check = li.querySelector('.check');
+    check.setAttribute('aria-pressed', task.done);
+    check.setAttribute('aria-label', `Mark "${task.title}" ${task.done ? 'not done' : 'done'}`);
+    check.onclick = async () => { await tasks.put(db, { ...task, done: !task.done }); refresh(db); };
 
-    const del = document.createElement('button');
-    del.className = 'delete';
-    del.textContent = 'Delete';
+    const del = li.querySelector('.delete');
+    del.setAttribute('aria-label', `Delete "${task.title}"`);
     del.onclick = async () => { await tasks.remove(db, task.id); refresh(db); };
 
-    li.append(check, title, del);
     return li;
   }));
-  empty.hidden = items.length > 0;
+
+  empty.hidden = visible.length > 0;
+  [document.getElementById('empty-title').textContent, document.getElementById('empty-hint').textContent] = EMPTY_TEXT[filter];
+
   const left = items.filter(t => !t.done).length;
   count.textContent = items.length ? `${left} of ${items.length} left` : '';
 }
@@ -110,8 +269,16 @@ openDb().then(db => {
     if (!title) return;
     await tasks.add(db, title);
     input.value = '';
+    input.focus();
     refresh(db);
   };
+
+  filterButtons.forEach(btn => btn.onclick = () => {
+    filter = btn.dataset.filter;
+    filterButtons.forEach(b => b.setAttribute('aria-pressed', b === btn));
+    refresh(db);
+  });
+
   refresh(db);
 });
 </script>

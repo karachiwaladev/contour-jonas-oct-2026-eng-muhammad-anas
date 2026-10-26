@@ -45,7 +45,7 @@ When something grows past a few lines here, move it into the right project folde
 
 | Folder | Ticket | What it is |
 |--------|--------|------------|
-| `todo/` | #4 | Todo app: create, complete and delete tasks, stored in IndexedDB. See `todo/CLAUDE.md` |
+| `todo/` | #4, #5, #6, #13 | Todo app: tasks with due dates, tags, recurrence and priority, stored in IndexedDB. See `todo/CLAUDE.md` |
 
 ### Answered tickets (no code)
 

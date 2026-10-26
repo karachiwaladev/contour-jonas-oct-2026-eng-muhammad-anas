@@ -17,11 +17,14 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-prompts.sh 2>/dev/null; \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/auto-commit-push.sh 2>/dev/null || true",
-            "timeout": 60
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/log-prompts.sh 2>/dev/null || true",
+            "timeout": 30
           }
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "claude-security@claude-plugins-official": true
   }
 }

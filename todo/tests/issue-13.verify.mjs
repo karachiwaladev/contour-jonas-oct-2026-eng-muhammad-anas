@@ -54,6 +54,7 @@ export default async page => {
   page.check('add form resets priority to None', await page.eval(`document.getElementById('priority').value`) === 'none');
   page.check('badges show High / Medium / Low', await page.eval(`[${badge('High thing')}, ${badge('Medium thing')}, ${badge('Low thing')}].join()`) === 'High,Medium,Low');
   page.check('no badge on None', await page.eval(badge('No-priority thing')) === null);
+  page.check('badge is announced as "High priority"', await page.eval(`${liFor('High thing')}.querySelector('.priority').getAttribute('aria-label')`) === 'High priority');
 
   page.check('order: date first, priority breaks ties, undated last', JSON.stringify(await page.eval(visibleTitles)) === JSON.stringify(
     ['Early low', 'High thing', 'Medium thing', 'Low thing', 'No-priority thing', 'Undated high']), await page.eval(visibleTitles));
@@ -99,6 +100,14 @@ export default async page => {
   page.check('edit form fits the page column (no overflow)', await page.eval(`(() => {
     const main = document.querySelector('main').getBoundingClientRect(), form = document.querySelector('#list .edit-form').getBoundingClientRect();
     return form.right <= main.right && document.documentElement.scrollWidth <= innerWidth; })()`));
+  // Phones just above the 420px breakpoint (e.g. 430px): narrow the column and check nothing spills out.
+  page.check('add form and edit row fit a 430px-wide column', await page.eval(`(async () => {
+    const main = document.querySelector('main'); main.style.maxWidth = '430px'; ${wait}
+    const fits = sel => { const row = document.querySelector(sel), r = row.getBoundingClientRect();
+      return [...row.querySelectorAll('*')].every(el => el.getBoundingClientRect().right <= r.right + 0.5); };
+    const ok = fits('#new-task .details') && fits('#list .edit-form .row');
+    main.style.maxWidth = ''; ${wait}
+    return ok; })()`));
   await page.screenshot('issue-13-editing');
   await page.eval(`(async () => { const f = document.querySelector('#list .edit-form'); f.querySelector('select[aria-label=Priority]').value = 'high'; f.requestSubmit(); ${wait} })()`);
   page.check('edit saves new priority', of(await page.eval(rows), 'Low thing')[0].priority === 'high');
@@ -114,6 +123,12 @@ export default async page => {
   await page.eval(`(async () => { ${liFor('Weekly review')}.querySelector('.check').click(); ${wait} })()`);
   all = of(await page.eval(rows), 'Weekly review');
   page.check('recurring next occurrence keeps priority', all.some(t => !t.done && t.due === '2027-04-09' && t.priority === 'high'), all);
+  // Changing a recurring task's priority in edit doesn't spawn another occurrence.
+  await page.eval(`(async () => { const li = [...document.querySelectorAll('#list li')].find(l => l.querySelector('.title')?.textContent === 'Weekly review' && !l.classList.contains('done'));
+    li.querySelector('.edit').click(); ${wait}
+    const f = document.querySelector('#list .edit-form'); f.querySelector('select[aria-label=Priority]').value = 'low'; f.requestSubmit(); ${wait} })()`);
+  const after = of(await page.eval(rows), 'Weekly review');
+  page.check('editing priority spawns no extra occurrence', after.length === all.length && after.some(t => !t.done && t.priority === 'low'), after);
 
   // Persistence
   const before = JSON.stringify(await page.eval(rows));

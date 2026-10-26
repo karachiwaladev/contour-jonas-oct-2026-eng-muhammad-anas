@@ -62,7 +62,8 @@
 
   /* New task */
   #new-task { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 20px; }
-  #new-task .details { grid-column: 1 / -1; display: flex; gap: 8px; }
+  #new-task .details { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+  #new-task .details .tag-editor { flex: 1 1 180px; }
   input[type=date] {
     height: 44px; padding: 0 12px; flex: none;
     background: var(--card); color: var(--fg);
@@ -583,6 +584,7 @@ function render(db, items) {
       badge.innerHTML = ICON_FLAG;
       badge.append(PRIORITY_LABEL[p]);
       badge.title = `${PRIORITY_LABEL[p]} priority`;
+      badge.setAttribute('aria-label', badge.title);
       meta.append(badge);
     }
     if (task.due) {

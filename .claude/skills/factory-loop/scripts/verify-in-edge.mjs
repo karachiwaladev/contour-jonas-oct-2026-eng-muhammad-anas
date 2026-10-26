@@ -62,11 +62,20 @@ const results = [];
 const page = {
   async eval(expression) {
     const r = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
+    if (r.error) throw new Error(`DevTools: ${r.error.message}`);
     if (r.result.exceptionDetails) throw new Error(r.result.exceptionDetails.exception?.description || r.result.exceptionDetails.text);
     return r.result.result.value;
   },
-  async reload() { await send('Page.reload'); await sleep(800); },
-  async goto(u) { await send('Page.navigate', { url: u }); await sleep(800); },
+  async reload() { await send('Page.reload'); await page.ready(); },
+  async goto(u) { await send('Page.navigate', { url: u }); await page.ready(); },
+  // Wait until the page has finished loading (fonts, scripts) plus a short settle for async rendering.
+  async ready(timeoutMs = 15000) {
+    await sleep(300);
+    for (const end = Date.now() + timeoutMs; Date.now() < end; await sleep(200)) {
+      try { if (await page.eval('document.readyState') === 'complete') break; } catch {}
+    }
+    await sleep(500);
+  },
   wait: sleep,
   async screenshot(name) {
     const r = await send('Page.captureScreenshot', { format: 'png' });

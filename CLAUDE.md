@@ -38,6 +38,7 @@ When something grows past a few lines here, move it into the right project folde
 | `.claude/settings.json` | Permissions (`gh issue comment`/`close`) and the Stop hook |
 | `.claude/hooks/` | Stop hook: logs prompts to `.claude/prompts.jsonl` (no auto-commit) |
 | `claude-security` plugin | Enabled in `.claude/settings.json`; scans each ticket branch's diff before its PR (`/claude-security` to run by hand) |
+| `superpowers` plugin | Enabled in `.claude/settings.json`. Its skills drive each loop stage: brainstorming, plans, TDD, debugging, verification, code review |
 | `.mcp.json` | `chrome-devtools` MCP server, driving Microsoft Edge for browser verification |
 
 ### Projects

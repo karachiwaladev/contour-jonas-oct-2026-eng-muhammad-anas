@@ -41,7 +41,7 @@ When something grows past a few lines here, move it into the right project folde
 
 | Folder | Ticket | What it is |
 |--------|--------|------------|
-| _none yet_ | | Add a row when a ticket creates a project folder |
+| `todo/` | #4 | Todo app: create, complete and delete tasks, stored in IndexedDB. See `todo/CLAUDE.md` |
 
 ### Answered tickets (no code)
 

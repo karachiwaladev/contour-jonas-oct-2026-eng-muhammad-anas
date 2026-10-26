@@ -1,6 +1,6 @@
 ---
 name: factory-loop
-description: Work through GitHub issues ("tickets") on the current repo end to end — fetch them, acknowledge each with an emoji reaction, actually do the work (answer questions, create files, build projects and features), verify built work in the browser with screenshots, comment on the ticket, and close it. Use this whenever the user asks to fetch, triage, work, answer, build, react to, comment on, or close issues/tickets in their repo, or says things like "run the factory loop", "process the tickets", "handle the open issues", or "pick up ticket #3", even if they only name one step of the loop.
+description: Work through GitHub issues ("tickets") on the current repo end to end — fetch them, acknowledge each with an emoji reaction, actually do the work (answer questions, create files, build projects and features), verify every ticket's work against its requirements (with browser checks and screenshots for builds), comment on the ticket, and close every ticket once it's done. Use this whenever the user asks to fetch, triage, work, answer, build, react to, comment on, or close issues/tickets in their repo, or says things like "run the factory loop", "process the tickets", "handle the open issues", or "pick up ticket #3", even if they only name one step of the loop.
 ---
 
 # Factory loop
@@ -52,11 +52,11 @@ First decide what kind of ticket it is.
 
 ### A. Question → answer it
 
-Research it, then go straight to step 5. Give a real, sourced answer. If the question is ambiguous, use the most common reading, say so, and note the alternatives. Don't post a fact you can't back up.
+Research it, then go to step 4. Give a real, sourced answer. If the question is ambiguous, use the most common reading, say so, and note the alternatives. Don't post a fact you can't back up.
 
 ### B. Small concrete change → make it
 
-Examples: create a file, add a doc, write a config, rename something the ticket names. Do it directly, keep to the repo's conventions (see `CLAUDE.md`, including updating its index when you add a folder or project), commit, then go to step 5.
+Examples: create a file, add a doc, write a config, rename something the ticket names. Do it directly, keep to the repo's conventions (see `CLAUDE.md`, including updating its index when you add a folder or project), commit, then go to step 4.
 
 ### C. Build a project or a feature → clarify, plan, approve, build, verify
 
@@ -69,7 +69,21 @@ Anything that creates a new project or adds a feature to an existing project goe
    - If the `chrome-devtools` tools aren't loaded (for example the session started before `.mcp.json` existed), say so, and verify instead by driving headless Edge over the DevTools protocol from a Node script, as `scripts/verify-in-edge.mjs` does. Don't skip verification.
 5. Commit the work and screenshots with `Closes #N` in the message.
 
-## 4. Attach screenshots
+## 4. Verify what you did
+
+Before commenting or closing, check every ticket's work against what the ticket asked for. Don't rely on what you remember doing; check the repo and GitHub as they are now. This applies to every ticket type, not just builds, because a ticket closed on a wrong or missing result is worse than one left open.
+
+Go through the ticket body one requirement at a time and record pass or fail with evidence:
+
+- **Questions:** the answer addresses exactly what was asked, and each fact has a source you actually opened.
+- **Files and changes:** each file or folder the ticket names exists at the right path (`ls`, `git ls-files`), and its content meets every stated constraint. For example, if the ticket says "under 100 lines", run `wc -l`. The `CLAUDE.md` index lists anything new.
+- **Builds and features:** the browser verification from step 3C passed for every behaviour, with no console errors, and the screenshots exist.
+- **Committed:** `git log` shows the work, with `Closes #N`, and `git status` shows nothing for this ticket left uncommitted.
+- **Pushed:** `git log origin/<branch>..<branch>` doesn't list the ticket's commit, which means GitHub has it.
+
+If anything fails, fix it and verify again. A ticket counts as **done** only when every requirement passes and the work is pushed. Put the checklist in the comment so the person watching the ticket can see what was checked.
+
+## 5. Attach screenshots
 
 GitHub's API can't upload images to a comment, so screenshots go into the repo and the comment embeds them by URL:
 
@@ -77,9 +91,9 @@ GitHub's API can't upload images to a comment, so screenshots go into the repo a
 ![Filters applied](https://raw.githubusercontent.com/OWNER/REPO/main/<project>/screenshots/issue-N-filters.png)
 ```
 
-Those links only work once the commit is pushed. If the push failed, say in your report that the screenshots will appear when the commits reach GitHub, and don't post a comment with broken images. Hold the comment (step 5) until the push succeeds.
+Those links only work once the commit is pushed. If the push failed, say in your report that the screenshots will appear when the commits reach GitHub, and don't post a comment with broken images. Hold the comment (step 6) until the push succeeds.
 
-## 5. Comment
+## 6. Comment
 
 Post directly, without asking first. Include:
 
@@ -95,15 +109,17 @@ gh issue comment N -R OWNER/REPO --body-file /path/to/comment.md
 
 Report the comment URL that `gh` prints. Only comment once the work is on GitHub. A comment that says "done" while the commit is stuck locally misleads the people watching the ticket.
 
-## 6. Close
+## 7. Close every finished ticket
+
+Close each ticket as soon as it's done, which means it passed step 4 and the comment is posted. Don't leave finished tickets open. Close every one, including questions and small changes, not only builds.
 
 ```bash
 gh issue close N -R OWNER/REPO --reason completed
 gh issue view N -R OWNER/REPO --json state,stateReason   # verify
 ```
 
-A pushed commit with `Closes #N` closes the issue by itself, so check the state before closing by hand. Closing needs triage access. If it fails with `does not have the correct permissions to execute CloseIssue`, don't retry. Tell the user the issue is still open, why, and the fix: the repo owner closes it, or grants triage/write access.
+A pushed commit with `Closes #N` usually closes the issue by itself, so check the state first and close by hand only if it's still open. Closing needs triage access. If it fails with `does not have the correct permissions to execute CloseIssue`, don't retry. Tell the user the issue is still open, why, and the fix: the repo owner closes it, or grants triage/write access.
 
-## 7. Loop and report
+## 8. Loop, sweep and report
 
-Move to the next open ticket. At the end, give a short summary per ticket: what was done (answer, files, feature), verification result with screenshot paths, commit SHA, pushed or not, comment link, closed or not. Report what actually happened. If a step was skipped, blocked or failed, say so and why.
+Move to the next open ticket. When all tickets have been worked, do a **closing sweep**: go back over every open ticket you've handled before, including ones blocked in earlier runs. For example, a ticket whose push failed may have reached GitHub since. Run step 4 on each one again, then comment if needed and close every ticket that is now done. At the end, give a short summary per ticket: what was done (answer, files, feature), verification result with screenshot paths, commit SHA, pushed or not, comment link, closed or not. Report what actually happened. If a step was skipped, blocked or failed, say so and why.

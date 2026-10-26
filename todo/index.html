@@ -67,6 +67,12 @@
     border: 2px solid var(--border); border-radius: var(--radius); font: inherit; font-size: .9rem;
   }
   input[type=date]:focus { outline: none; border-color: var(--ring); }
+  select {
+    height: 44px; padding: 0 10px; flex: none;
+    background: var(--card); color: var(--fg);
+    border: 2px solid var(--border); border-radius: var(--radius); font: inherit; font-size: .9rem; cursor: pointer;
+  }
+  select:focus { outline: none; border-color: var(--ring); }
 
   /* Tag chip editor */
   .tag-editor {
@@ -160,6 +166,8 @@
   .due { display: inline-flex; align-items: center; gap: 4px; color: var(--muted-fg); font-size: .8rem; font-weight: 500; }
   .due svg { width: 14px; height: 14px; }
   .due.overdue { color: var(--destructive); font-weight: 700; }
+  .repeat { display: inline-flex; align-items: center; gap: 4px; color: var(--secondary); font-size: .8rem; font-weight: 600; }
+  .repeat svg { width: 14px; height: 14px; }
   .meta .tag {
     height: 22px; padding: 0 8px; border-radius: 999px; background: var(--muted); color: var(--fg);
     font-size: .75rem; font-weight: 600; transition: background-color var(--ease);
@@ -234,6 +242,12 @@
     </button>
     <div class="details">
       <input type="date" id="due" aria-label="Due date">
+      <select id="repeat" aria-label="Repeat">
+        <option value="none">No repeat</option>
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
+        <option value="monthly">Monthly</option>
+      </select>
       <div id="new-tags"></div>
     </div>
   </form>
@@ -274,8 +288,9 @@
 
 <script>
 // Tasks live in IndexedDB (a client-side database), so they persist across reloads.
-// A task is {id, title, done, createdAt, due: 'YYYY-MM-DD' | '', tags: string[]}.
-// Tasks saved before due dates and tags existed lack those fields and are read with defaults.
+// A task is {id, title, done, createdAt, due: 'YYYY-MM-DD' | '', tags: string[],
+//   repeat: 'none' | 'daily' | 'weekly' | 'monthly', repeatDay?: number, spawnedNext?: boolean}.
+// Tasks saved before a field existed lack it and are read with defaults (no date, no tags, no repeat).
 const DB_NAME = 'todo-app';
 const STORE = 'tasks';
 
@@ -334,6 +349,44 @@ function today() {
 function formatDue(due) {
   const [y, m, d] = due.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+const REPEAT_LABEL = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' };
+const ICON_REPEAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>';
+
+function isoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Next due date of a recurring task. Monthly tasks keep their original day of the month
+// (repeatDay) and clamp to the last day of shorter months: Jan 31 -> Feb 28 -> Mar 31.
+function nextDue(due, repeat, repeatDay) {
+  const [y, m, d] = due.split('-').map(Number);
+  if (repeat === 'daily') return isoDate(new Date(y, m - 1, d + 1));
+  if (repeat === 'weekly') return isoDate(new Date(y, m - 1, d + 7));
+  const lastDay = new Date(y, m + 1, 0).getDate();   // last day of the following month
+  return isoDate(new Date(y, m, Math.min(repeatDay || d, lastDay)));
+}
+
+// Fills in the fields a recurring task needs: a due date (today if none) and, for monthly, the anchor day.
+function withRepeat(task) {
+  const repeat = task.repeat || 'none';
+  if (repeat === 'none') return { ...task, repeat, repeatDay: undefined };
+  const due = task.due || today();
+  return { ...task, repeat, due, repeatDay: repeat === 'monthly' ? (task.repeatDay || Number(due.split('-')[2])) : undefined };
+}
+
+// Ticking a recurring task done creates the next occurrence once. The flag stops a duplicate
+// if the task is unticked and ticked again.
+async function toggleDone(db, task) {
+  const done = !task.done;
+  if (done && task.repeat && task.repeat !== 'none' && task.due && !task.spawnedNext) {
+    await tasks.put(db, { ...task, done, spawnedNext: true });
+    await tasks.add(db, { title: task.title, tags: task.tags || [], repeat: task.repeat, repeatDay: task.repeatDay,
+                          due: nextDue(task.due, task.repeat, task.repeatDay) });
+  } else {
+    await tasks.put(db, { ...task, done });
+  }
 }
 
 // Soonest due first, undated last; ties keep the order tasks were added.
@@ -426,9 +479,14 @@ function editForm(db, task, li) {
   const due = Object.assign(document.createElement('input'), { type: 'date', value: task.due || '' });
   due.setAttribute('aria-label', 'Due date');
   const tags = tagEditor(task.tags || []);
+  const repeat = document.createElement('select');
+  repeat.setAttribute('aria-label', 'Repeat');
+  for (const [value, label] of [['none', 'No repeat'], ['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly']]) {
+    repeat.append(Object.assign(document.createElement('option'), { value, textContent: label, selected: (task.repeat || 'none') === value }));
+  }
   const row = document.createElement('div');
   row.className = 'row';
-  row.append(due, tags.el);
+  row.append(due, repeat, tags.el);
   const actions = document.createElement('div');
   actions.className = 'actions';
   const cancel = Object.assign(document.createElement('button'), { type: 'button', className: 'btn ghost', textContent: 'Cancel' });
@@ -443,7 +501,9 @@ function editForm(db, task, li) {
     e.preventDefault();
     const text = title.value.trim();
     if (!text) return;
-    await tasks.put(db, { ...task, title: text, due: due.value, tags: tags.getTags() });
+    const changedRepeat = repeat.value !== (task.repeat || 'none') || due.value !== (task.due || '');
+    await tasks.put(db, withRepeat({ ...task, title: text, due: due.value, tags: tags.getTags(), repeat: repeat.value,
+                                     repeatDay: changedRepeat ? undefined : task.repeatDay }));
     close();
   };
   li.replaceChildren(form);
@@ -475,6 +535,14 @@ function render(db, items) {
       due.append(`${overdue ? 'Overdue · ' : 'Due '}${formatDue(task.due)}`);
       meta.append(due);
     }
+    if (REPEAT_LABEL[task.repeat]) {
+      const r = document.createElement('span');
+      r.className = 'repeat';
+      r.innerHTML = ICON_REPEAT;
+      r.append(REPEAT_LABEL[task.repeat]);
+      r.title = `Repeats ${REPEAT_LABEL[task.repeat].toLowerCase()}`;
+      meta.append(r);
+    }
     for (const tag of task.tags || []) {
       const t = Object.assign(document.createElement('button'), { type: 'button', className: 'tag', textContent: `#${tag}` });
       t.title = `Filter by #${tag}`;
@@ -489,7 +557,7 @@ function render(db, items) {
     const check = li.querySelector('.check');
     check.setAttribute('aria-pressed', task.done);
     check.setAttribute('aria-label', `Mark "${task.title}" ${task.done ? 'not done' : 'done'}`);
-    check.onclick = async () => { await tasks.put(db, { ...task, done: !task.done }); refresh(db); };
+    check.onclick = async () => { await toggleDone(db, task); refresh(db); };
 
     const del = li.querySelector('.delete');
     del.setAttribute('aria-label', `Delete "${task.title}"`);
@@ -517,10 +585,12 @@ openDb().then(db => {
     e.preventDefault();
     const input = document.getElementById('title');
     const due = document.getElementById('due');
+    const repeat = document.getElementById('repeat');
     const title = input.value.trim();
     if (!title) return;
-    await tasks.add(db, { title, due: due.value, tags: newTags.getTags() });
+    await tasks.add(db, withRepeat({ title, due: due.value, tags: newTags.getTags(), repeat: repeat.value }));
     input.value = due.value = '';
+    repeat.value = 'none';
     newTags.clear();
     input.focus();
     refresh(db);

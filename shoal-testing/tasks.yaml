@@ -1,0 +1,51 @@
+# User tasks the personas attempt against the todo app.
+# Each persona works through these in character; findings are grouped by persona
+# in findings/todo-app-review.md.
+
+version: 1
+
+tasks:
+  - id: add-basic
+    title: Add a simple task
+    steps:
+      - Type a task title and submit.
+      - Confirm it appears in the list.
+
+  - id: add-rich
+    title: Add a task with a due date and a tag
+    steps:
+      - Enter a title.
+      - Set a due date.
+      - Add a tag via the chip editor (type, press Enter).
+      - Submit and confirm the task shows the date and tag.
+
+  - id: complete
+    title: Mark a task done
+    steps:
+      - Click the complete control on a task.
+      - Confirm it visibly moves to / shows as done.
+
+  - id: edit
+    title: Edit a task inline
+    steps:
+      - Open the edit form on a task.
+      - Change the title; press Enter to save (Esc to cancel).
+
+  - id: filter
+    title: Filter the list
+    steps:
+      - Switch between All / Incomplete / Completed.
+      - Filter by a tag.
+
+  - id: delete
+    title: Delete a task
+    steps:
+      - Click delete on a task.
+      - Note whether anything confirms it or lets you undo.
+
+  - id: errors-and-abuse
+    title: Edge and abuse inputs
+    steps:
+      - Submit an empty title.
+      - Enter a very long title, emoji, or gibberish.
+      - Double-submit; rapidly toggle complete.

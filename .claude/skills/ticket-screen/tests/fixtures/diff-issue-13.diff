@@ -1,0 +1,400 @@
+diff --git a/todo/index.html b/todo/index.html
+index f8bd2ce..55bac8d 100644
+--- a/todo/index.html
++++ b/todo/index.html
+@@ -21,6 +21,7 @@
+     --border: #CCFBF1;
+     --border-strong: #99F6E4;
+     --destructive: #DC2626;
++    --warning: #B45309;          /* amber-700: medium priority */
+     --ring: #0D9488;
+     --radius: 12px;
+     --ease: 180ms ease;
+@@ -37,6 +38,7 @@
+       --border: #115E59;
+       --border-strong: #0F766E;
+       --destructive: #F87171;
++      --warning: #FBBF24;
+       --ring: #2DD4BF;
+     }
+   }
+@@ -60,7 +62,8 @@
+ 
+   /* New task */
+   #new-task { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 20px; }
+-  #new-task .details { grid-column: 1 / -1; display: flex; gap: 8px; }
++  #new-task .details { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
++  #new-task .details .tag-editor { flex: 1 1 180px; }
+   input[type=date] {
+     height: 44px; padding: 0 12px; flex: none;
+     background: var(--card); color: var(--fg);
+@@ -126,14 +129,14 @@
+ 
+   .tag-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -4px 0 16px; }
+   .tag-filters .label { color: var(--muted-fg); font-size: .85rem; font-weight: 600; margin-right: 2px; }
+-  .tag-filters button[data-tag] {
++  .tag-filters button[data-tag], .tag-filters button[data-priority] {
+     min-height: 32px; padding: 0 12px; border-radius: 999px;
+     border: 2px solid var(--border); background: var(--card); color: var(--muted-fg); font-size: .85rem; font-weight: 600;
+     transition: background-color var(--ease), color var(--ease), border-color var(--ease);
+   }
+-  .tag-filters button[data-tag]:hover { border-color: var(--border-strong); color: var(--fg); }
+-  .tag-filters button[data-tag][aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+-  @media (prefers-color-scheme: dark) { .tag-filters button[data-tag][aria-pressed="true"] { color: #042F2E; } }
++  .tag-filters button[data-tag]:hover, .tag-filters button[data-priority]:hover { border-color: var(--border-strong); color: var(--fg); }
++  .tag-filters button[data-tag][aria-pressed="true"], .tag-filters button[data-priority][aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
++  @media (prefers-color-scheme: dark) { .tag-filters button[aria-pressed="true"]:is([data-tag], [data-priority]) { color: #042F2E; } }
+   .tag-filters .clear { min-height: 32px; padding: 0 8px; color: var(--muted-fg); font-size: .85rem; text-decoration: underline; }
+ 
+   /* List */
+@@ -168,6 +171,11 @@
+   .due.overdue { color: var(--destructive); font-weight: 700; }
+   .repeat { display: inline-flex; align-items: center; gap: 4px; color: var(--secondary); font-size: .8rem; font-weight: 600; }
+   .repeat svg { width: 14px; height: 14px; }
++  .priority { display: inline-flex; align-items: center; gap: 4px; font-size: .8rem; font-weight: 700; }
++  .priority svg { width: 14px; height: 14px; }
++  .priority.high { color: var(--destructive); }
++  .priority.medium { color: var(--warning); }
++  .priority.low { color: var(--muted-fg); }
+   .meta .tag {
+     height: 22px; padding: 0 8px; border-radius: 999px; background: var(--muted); color: var(--fg);
+     font-size: .75rem; font-weight: 600; transition: background-color var(--ease);
+@@ -190,7 +198,8 @@
+     border: 2px solid var(--border); border-radius: var(--radius); font: inherit;
+   }
+   .edit-form .title-input:focus { outline: none; border-color: var(--ring); }
+-  .edit-form .row { display: flex; gap: 8px; }
++  .edit-form .row { display: flex; flex-wrap: wrap; gap: 8px; }
++  .edit-form .row .tag-editor { flex: 1 1 180px; }
+   .edit-form .actions { display: flex; justify-content: flex-end; gap: 8px; }
+   .btn { height: 40px; padding: 0 16px; border-radius: 10px; font-weight: 600; font-size: .9rem; }
+   .btn.primary { background: var(--primary); color: #fff; }
+@@ -248,6 +257,12 @@
+         <option value="weekly">Weekly</option>
+         <option value="monthly">Monthly</option>
+       </select>
++      <select id="priority" aria-label="Priority">
++        <option value="none">No priority</option>
++        <option value="high">High</option>
++        <option value="medium">Medium</option>
++        <option value="low">Low</option>
++      </select>
+       <div id="new-tags"></div>
+     </div>
+   </form>
+@@ -257,6 +272,7 @@
+     <button type="button" data-filter="active" aria-pressed="false">Incomplete</button>
+     <button type="button" data-filter="done" aria-pressed="false">Completed</button>
+   </div>
++  <div class="tag-filters" id="priority-filters" role="group" aria-label="Filter by priority"></div>
+   <div class="tag-filters" id="tag-filters" role="group" aria-label="Filter by tag" hidden></div>
+   <datalist id="known-tags"></datalist>
+ 
+@@ -289,8 +305,9 @@
+ <script>
+ // Tasks live in IndexedDB (a client-side database), so they persist across reloads.
+ // A task is {id, title, done, createdAt, due: 'YYYY-MM-DD' | '', tags: string[],
+-//   repeat: 'none' | 'daily' | 'weekly' | 'monthly', repeatDay?: number, spawnedNext?: boolean}.
+-// Tasks saved before a field existed lack it and are read with defaults (no date, no tags, no repeat).
++//   repeat: 'none' | 'daily' | 'weekly' | 'monthly', repeatDay?: number, spawnedNext?: boolean,
++//   priority: 'high' | 'medium' | 'low' | 'none'}.
++// Tasks saved before a field existed lack it and are read with defaults (no date, no tags, no repeat, no priority).
+ const DB_NAME = 'todo-app';
+ const STORE = 'tasks';
+ 
+@@ -325,9 +342,11 @@ const count = document.getElementById('count');
+ const template = document.getElementById('task-template');
+ const filterButtons = document.querySelectorAll('[data-filter]');
+ const tagFilters = document.getElementById('tag-filters');
++const priorityFilters = document.getElementById('priority-filters');
+ const knownTags = document.getElementById('known-tags');
+ let filter = 'all';
+ const selectedTags = new Set();   // tag filter: show tasks having ANY of these
++const selectedPriorities = new Set();   // priority filter: show tasks with ANY of these
+ let editingId = null;             // task currently shown as the inline edit form
+ let allTags = [];
+ 
+@@ -352,6 +371,10 @@ function formatDue(due) {
+ }
+ 
+ const REPEAT_LABEL = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly' };
++const PRIORITIES = ['high', 'medium', 'low', 'none'];   // also the tie-break order
++const PRIORITY_LABEL = { high: 'High', medium: 'Medium', low: 'Low', none: 'None' };
++const ICON_FLAG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4"/><path d="M4 4h13l-2 4 2 4H4"/></svg>';
++const priorityOf = task => PRIORITIES.includes(task.priority) ? task.priority : 'none';
+ const ICON_REPEAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>';
+ 
+ function isoDate(d) {
+@@ -383,19 +406,21 @@ async function toggleDone(db, task) {
+   if (done && task.repeat && task.repeat !== 'none' && task.due && !task.spawnedNext) {
+     await tasks.put(db, { ...task, done, spawnedNext: true });
+     await tasks.add(db, { title: task.title, tags: task.tags || [], repeat: task.repeat, repeatDay: task.repeatDay,
+-                          due: nextDue(task.due, task.repeat, task.repeatDay) });
++                          priority: priorityOf(task), due: nextDue(task.due, task.repeat, task.repeatDay) });
+   } else {
+     await tasks.put(db, { ...task, done });
+   }
+ }
+ 
+-// Soonest due first, undated last; ties keep the order tasks were added.
++// Soonest due first, undated last; same date sorts by priority (High first), then the order tasks were added.
+ function byDue(a, b) {
+   if ((a.due || '') !== (b.due || '')) {
+     if (!a.due) return 1;
+     if (!b.due) return -1;
+     return a.due < b.due ? -1 : 1;
+   }
++  const rank = PRIORITIES.indexOf(priorityOf(a)) - PRIORITIES.indexOf(priorityOf(b));
++  if (rank) return rank;
+   return a.createdAt - b.createdAt;
+ }
+ 
+@@ -470,6 +495,24 @@ function renderTagFilters(db) {
+   tagFilters.replaceChildren(...parts);
+ }
+ 
++function renderPriorityFilters(db) {
++  const label = Object.assign(document.createElement('span'), { className: 'label', textContent: 'Priority' });
++  const buttons = PRIORITIES.map(p => {
++    const b = Object.assign(document.createElement('button'), { type: 'button', textContent: PRIORITY_LABEL[p] });
++    b.dataset.priority = p;
++    b.setAttribute('aria-pressed', selectedPriorities.has(p));
++    b.onclick = () => { selectedPriorities.has(p) ? selectedPriorities.delete(p) : selectedPriorities.add(p); refresh(db); };
++    return b;
++  });
++  const parts = [label, ...buttons];
++  if (selectedPriorities.size) {
++    const clear = Object.assign(document.createElement('button'), { type: 'button', className: 'clear', textContent: 'Clear' });
++    clear.onclick = () => { selectedPriorities.clear(); refresh(db); };
++    parts.push(clear);
++  }
++  priorityFilters.replaceChildren(...parts);
++}
++
+ function editForm(db, task, li) {
+   li.classList.add('editing');
+   const form = document.createElement('form');
+@@ -484,9 +527,14 @@ function editForm(db, task, li) {
+   for (const [value, label] of [['none', 'No repeat'], ['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly']]) {
+     repeat.append(Object.assign(document.createElement('option'), { value, textContent: label, selected: (task.repeat || 'none') === value }));
+   }
++  const priority = document.createElement('select');
++  priority.setAttribute('aria-label', 'Priority');
++  for (const p of PRIORITIES) {
++    priority.append(Object.assign(document.createElement('option'), { value: p, textContent: p === 'none' ? 'No priority' : PRIORITY_LABEL[p], selected: priorityOf(task) === p }));
++  }
+   const row = document.createElement('div');
+   row.className = 'row';
+-  row.append(due, repeat, tags.el);
++  row.append(due, repeat, priority, tags.el);
+   const actions = document.createElement('div');
+   actions.className = 'actions';
+   const cancel = Object.assign(document.createElement('button'), { type: 'button', className: 'btn ghost', textContent: 'Cancel' });
+@@ -503,7 +551,7 @@ function editForm(db, task, li) {
+     if (!text) return;
+     const changedRepeat = repeat.value !== (task.repeat || 'none') || due.value !== (task.due || '');
+     await tasks.put(db, withRepeat({ ...task, title: text, due: due.value, tags: tags.getTags(), repeat: repeat.value,
+-                                     repeatDay: changedRepeat ? undefined : task.repeatDay }));
++                                     priority: priority.value, repeatDay: changedRepeat ? undefined : task.repeatDay }));
+     close();
+   };
+   li.replaceChildren(form);
+@@ -513,10 +561,12 @@ function editForm(db, task, li) {
+ function render(db, items) {
+   allTags = [...new Set(items.flatMap(t => t.tags || []))].sort();
+   renderTagFilters(db);
++  renderPriorityFilters(db);
+   const now = today();
+   const visible = items
+     .filter(t => filter === 'all' || (filter === 'done') === t.done)
+     .filter(t => !selectedTags.size || (t.tags || []).some(tag => selectedTags.has(tag)))
++    .filter(t => !selectedPriorities.size || selectedPriorities.has(priorityOf(t)))
+     .sort(byDue);
+ 
+   list.replaceChildren(...visible.map(task => {
+@@ -527,6 +577,16 @@ function render(db, items) {
+     li.querySelector('.title').textContent = task.title;
+ 
+     const meta = li.querySelector('.meta');
++    const p = priorityOf(task);
++    if (p !== 'none') {
++      const badge = document.createElement('span');
++      badge.className = `priority ${p}`;
++      badge.innerHTML = ICON_FLAG;
++      badge.append(PRIORITY_LABEL[p]);
++      badge.title = `${PRIORITY_LABEL[p]} priority`;
++      badge.setAttribute('aria-label', badge.title);
++      meta.append(badge);
++    }
+     if (task.due) {
+       const overdue = !task.done && task.due < now;
+       const due = document.createElement('span');
+@@ -568,7 +628,7 @@ function render(db, items) {
+ 
+   empty.hidden = visible.length > 0;
+   [document.getElementById('empty-title').textContent, document.getElementById('empty-hint').textContent] =
+-    items.length && selectedTags.size ? ['No matching tasks', 'Try other tags or clear the tag filter.'] : EMPTY_TEXT[filter];
++    items.length && (selectedTags.size || selectedPriorities.size) ? ['No matching tasks', 'Try other tags or priorities, or clear the filters.'] : EMPTY_TEXT[filter];
+ 
+   const left = items.filter(t => !t.done).length;
+   count.textContent = items.length ? `${left} of ${items.length} left` : '';
+@@ -586,11 +646,12 @@ openDb().then(db => {
+     const input = document.getElementById('title');
+     const due = document.getElementById('due');
+     const repeat = document.getElementById('repeat');
++    const priority = document.getElementById('priority');
+     const title = input.value.trim();
+     if (!title) return;
+-    await tasks.add(db, withRepeat({ title, due: due.value, tags: newTags.getTags(), repeat: repeat.value }));
++    await tasks.add(db, withRepeat({ title, due: due.value, tags: newTags.getTags(), repeat: repeat.value, priority: priority.value }));
+     input.value = due.value = '';
+-    repeat.value = 'none';
++    repeat.value = priority.value = 'none';
+     newTags.clear();
+     input.focus();
+     refresh(db);
+diff --git a/todo/tests/issue-13.verify.mjs b/todo/tests/issue-13.verify.mjs
+new file mode 100644
+index 0000000..756a740
+--- /dev/null
++++ b/todo/tests/issue-13.verify.mjs
+@@ -0,0 +1,139 @@
++// Verifies task priority (#13) in headless Edge. Run:
++//   node .claude/skills/factory-loop/scripts/verify-in-edge.mjs todo/index.html todo/tests/issue-13.verify.mjs todo/screenshots
++const wait = 'await new Promise(r => setTimeout(r, 250));';
++const add = (title, priority, due = '', tags = [], repeat = 'none') => `(async () => {
++  document.getElementById('title').value = ${JSON.stringify(title)};
++  document.getElementById('due').value = ${JSON.stringify(due)};
++  document.getElementById('repeat').value = ${JSON.stringify(repeat)};
++  document.getElementById('priority').value = ${JSON.stringify(priority)};
++  const ti = document.querySelector('#new-task .tag-editor input');
++  for (const t of ${JSON.stringify(tags)}) {
++    ti.value = t;
++    ti.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
++  }
++  document.getElementById('new-task').requestSubmit();
++  ${wait}
++})()`;
++// All task rows from IndexedDB, the source of truth. Missing priority is kept as undefined here.
++const rows = `new Promise(res => {
++  const r = indexedDB.open('todo-app', 1);
++  r.onsuccess = () => {
++    const q = r.result.transaction('tasks').objectStore('tasks').getAll();
++    q.onsuccess = () => { res(q.result.map(t => ({ title: t.title, done: t.done, due: t.due, priority: t.priority, repeat: t.repeat }))); r.result.close(); };
++  };
++})`;
++// A task saved before priority existed: written straight into IndexedDB with no priority field.
++const addLegacy = (title, due) => `new Promise(res => {
++  const r = indexedDB.open('todo-app', 1);
++  r.onsuccess = () => {
++    const tx = r.result.transaction('tasks', 'readwrite');
++    tx.objectStore('tasks').add({ title: ${JSON.stringify(title)}, done: false, createdAt: Date.now(), due: ${JSON.stringify(due)}, tags: [] });
++    tx.oncomplete = () => { r.result.close(); res(); };
++  };
++})`;
++const visibleTitles = `[...document.querySelectorAll('#list li .title')].map(e => e.textContent)`;
++const liFor = title => `[...document.querySelectorAll('#list li')].find(li => li.querySelector('.title')?.textContent === ${JSON.stringify(title)})`;
++const badge = title => `(${liFor(title)}?.querySelector('.priority')?.textContent ?? null)`;
++const chip = p => `(async () => { document.querySelector('#priority-filters button[data-priority=${p}]').click(); ${wait} })()`;
++const clearChips = `(async () => { document.querySelector('#priority-filters .clear').click(); ${wait} })()`;
++const status = f => `(async () => { document.querySelector('[data-filter=${f}]').click(); ${wait} })()`;
++const of = (all, title) => all.filter(t => t.title === title);
++
++export default async page => {
++  // Same due date for four tasks so priority decides their order; one earlier, one undated.
++  await page.eval(add('Low thing', 'low', '2027-03-10', ['home']));
++  await page.eval(add('No-priority thing', 'none', '2027-03-10'));
++  await page.eval(add('High thing', 'high', '2027-03-10', ['work']));
++  await page.eval(add('Medium thing', 'medium', '2027-03-10', ['work']));
++  await page.eval(add('Early low', 'low', '2027-03-01'));
++  await page.eval(add('Undated high', 'high', ''));
++
++  let all = await page.eval(rows);
++  page.check('add saves each priority', of(all, 'High thing')[0].priority === 'high' && of(all, 'Medium thing')[0].priority === 'medium'
++    && of(all, 'Low thing')[0].priority === 'low' && of(all, 'No-priority thing')[0].priority === 'none', all);
++  page.check('add form resets priority to None', await page.eval(`document.getElementById('priority').value`) === 'none');
++  page.check('badges show High / Medium / Low', await page.eval(`[${badge('High thing')}, ${badge('Medium thing')}, ${badge('Low thing')}].join()`) === 'High,Medium,Low');
++  page.check('no badge on None', await page.eval(badge('No-priority thing')) === null);
++  page.check('badge is announced as "High priority"', await page.eval(`${liFor('High thing')}.querySelector('.priority').getAttribute('aria-label')`) === 'High priority');
++
++  page.check('order: date first, priority breaks ties, undated last', JSON.stringify(await page.eval(visibleTitles)) === JSON.stringify(
++    ['Early low', 'High thing', 'Medium thing', 'Low thing', 'No-priority thing', 'Undated high']), await page.eval(visibleTitles));
++
++  // A task saved before this feature existed reads as None.
++  await page.eval(addLegacy('Old task', '2027-03-10'));
++  await page.reload();
++  page.check('old task without priority shows no badge', await page.eval(badge('Old task')) === null);
++  page.check('old task sorts with None', JSON.stringify(await page.eval(visibleTitles)).includes('"Low thing","No-priority thing","Old task"'), await page.eval(visibleTitles));
++  await page.screenshot('issue-13-list');
++
++  // Chip filters
++  await page.eval(chip('high'));
++  page.check('High chip shows only High tasks', JSON.stringify(await page.eval(visibleTitles)) === JSON.stringify(['High thing', 'Undated high']), await page.eval(visibleTitles));
++  page.check('chip is pressed', await page.eval(`document.querySelector('#priority-filters button[data-priority=high]').getAttribute('aria-pressed')`) === 'true');
++  await page.screenshot('issue-13-filter-high');
++  await page.eval(chip('low'));
++  page.check('High + Low chips show both', JSON.stringify(await page.eval(visibleTitles)) === JSON.stringify(['Early low', 'High thing', 'Low thing', 'Undated high']), await page.eval(visibleTitles));
++  await page.eval(clearChips);
++  page.check('Clear shows everything again', (await page.eval(visibleTitles)).length === 7);
++  await page.eval(chip('none'));
++  page.check('None chip matches None and old tasks', JSON.stringify(await page.eval(visibleTitles)) === JSON.stringify(['No-priority thing', 'Old task']), await page.eval(visibleTitles));
++  await page.eval(clearChips);
++
++  // Combined with tag and status filters: High AND #work AND Incomplete
++  await page.eval(`(async () => { document.querySelector('#tag-filters button[data-tag=work]').click(); ${wait} })()`);
++  await page.eval(chip('high'));
++  await page.eval(status('active'));
++  page.check('priority + tag + status filters intersect', JSON.stringify(await page.eval(visibleTitles)) === JSON.stringify(['High thing']), await page.eval(visibleTitles));
++  await page.eval(status('done'));
++  page.check('empty state says No matching tasks', await page.eval(`document.getElementById('empty-title').textContent`) === 'No matching tasks');
++  await page.eval(status('all'));
++  await page.eval(clearChips);
++  await page.eval(`(async () => { document.querySelector('#tag-filters .clear').click(); ${wait} })()`);
++
++  // Inline edit: Low -> High moves it up; Esc cancels.
++  await page.eval(`(async () => { ${liFor('Low thing')}.querySelector('.edit').click(); ${wait} })()`);
++  await page.eval(`(async () => { document.querySelector('#list .edit-form select[aria-label=Priority]').value = 'medium';
++    document.querySelector('#list .edit-form').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); ${wait} })()`);
++  page.check('Esc cancels a priority edit', of(await page.eval(rows), 'Low thing')[0].priority === 'low');
++  await page.eval(`(async () => { ${liFor('Low thing')}.querySelector('.edit').click(); ${wait} })()`);
++  page.check('edit form shows current priority', await page.eval(`document.querySelector('#list .edit-form select[aria-label=Priority]').value`) === 'low');
++  page.check('edit form fits the page column (no overflow)', await page.eval(`(() => {
++    const main = document.querySelector('main').getBoundingClientRect(), form = document.querySelector('#list .edit-form').getBoundingClientRect();
++    return form.right <= main.right && document.documentElement.scrollWidth <= innerWidth; })()`));
++  // Phones just above the 420px breakpoint (e.g. 430px): narrow the column and check nothing spills out.
++  page.check('add form and edit row fit a 430px-wide column', await page.eval(`(async () => {
++    const main = document.querySelector('main'); main.style.maxWidth = '430px'; ${wait}
++    const fits = sel => { const row = document.querySelector(sel), r = row.getBoundingClientRect();
++      return [...row.querySelectorAll('*')].every(el => el.getBoundingClientRect().right <= r.right + 0.5); };
++    const ok = fits('#new-task .details') && fits('#list .edit-form .row');
++    main.style.maxWidth = ''; ${wait}
++    return ok; })()`));
++  await page.screenshot('issue-13-editing');
++  await page.eval(`(async () => { const f = document.querySelector('#list .edit-form'); f.querySelector('select[aria-label=Priority]').value = 'high'; f.requestSubmit(); ${wait} })()`);
++  page.check('edit saves new priority', of(await page.eval(rows), 'Low thing')[0].priority === 'high');
++  page.check('edited badge and order update', await page.eval(badge('Low thing')) === 'High'
++    && (await page.eval(visibleTitles)).indexOf('Low thing') < (await page.eval(visibleTitles)).indexOf('Medium thing'), await page.eval(visibleTitles));
++
++  // Editing an old task without touching priority saves it as None.
++  await page.eval(`(async () => { ${liFor('Old task')}.querySelector('.edit').click(); ${wait} document.querySelector('#list .edit-form').requestSubmit(); ${wait} })()`);
++  page.check('saving an old task stores priority none', of(await page.eval(rows), 'Old task')[0].priority === 'none');
++
++  // Recurring: next occurrence keeps the priority.
++  await page.eval(add('Weekly review', 'high', '2027-04-02', [], 'weekly'));
++  await page.eval(`(async () => { ${liFor('Weekly review')}.querySelector('.check').click(); ${wait} })()`);
++  all = of(await page.eval(rows), 'Weekly review');
++  page.check('recurring next occurrence keeps priority', all.some(t => !t.done && t.due === '2027-04-09' && t.priority === 'high'), all);
++  // Changing a recurring task's priority in edit doesn't spawn another occurrence.
++  await page.eval(`(async () => { const li = [...document.querySelectorAll('#list li')].find(l => l.querySelector('.title')?.textContent === 'Weekly review' && !l.classList.contains('done'));
++    li.querySelector('.edit').click(); ${wait}
++    const f = document.querySelector('#list .edit-form'); f.querySelector('select[aria-label=Priority]').value = 'low'; f.requestSubmit(); ${wait} })()`);
++  const after = of(await page.eval(rows), 'Weekly review');
++  page.check('editing priority spawns no extra occurrence', after.length === all.length && after.some(t => !t.done && t.priority === 'low'), after);
++
++  // Persistence
++  const before = JSON.stringify(await page.eval(rows));
++  await page.reload();
++  page.check('priorities persist after reload', JSON.stringify(await page.eval(rows)) === before);
++  page.check('badges still shown after reload', await page.eval(badge('High thing')) === 'High');
++  await page.screenshot('issue-13-after-reload');
++};

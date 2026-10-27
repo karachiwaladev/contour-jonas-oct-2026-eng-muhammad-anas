@@ -24,7 +24,7 @@ When something grows past a few lines here, move it into the right project folde
 
 ## The loop
 
-`fetch → react 👀 → do the work → verify → comment → close`, run per open ticket. Builds go through clarify → plan → approval → build → browser check with screenshots → Claude Security scan of the diff → PR. Nothing destructive. Commits happen only for ticket work or when asked, never automatically. See `.claude/skills/factory-loop/SKILL.md`. Start it with `/factory-loop`, or `/loop 1m /factory-loop` to keep polling.
+`fetch → screen → react 👀 → do the work → verify → comment → close`, run per open ticket. Builds go through clarify → plan → approval → build → browser check with screenshots → Claude Security scan of the diff → PR. Every ticket, plan and diff is screened for hostile requests (`ticket-screen`), and a guard hook blocks dangerous tool calls. Nothing destructive. Commits happen only for ticket work or when asked, never automatically. See `.claude/skills/factory-loop/SKILL.md`. Start it with `/factory-loop`, or `/loop 1m /factory-loop` to keep polling.
 
 ## Index
 
@@ -35,8 +35,9 @@ When something grows past a few lines here, move it into the right project folde
 | `CLAUDE.md` | This file: root index and factory rules |
 | `README.md` | Workshop brief: how tickets, scoring and pushing work |
 | `.claude/skills/factory-loop/` | The ticket loop skill: fetch, react, comment, close |
-| `.claude/settings.json` | Permissions (`gh issue comment`/`close`) and the Stop hook |
-| `.claude/hooks/` | Stop hook: logs prompts to `.claude/prompts.jsonl` (no auto-commit) |
+| `.claude/skills/ticket-screen/` | Screens tickets, plans and diffs for hostile requests; held tickets get `needs-human-review` until a person adds `screen-approved` |
+| `.claude/settings.json` | Permissions (`gh issue comment`/`close`), the guard and Stop hooks |
+| `.claude/hooks/` | `guard.mjs` (PreToolUse: blocks destructive, secret-reading and exfiltrating calls; tests in `hooks/tests/`) and the Stop hook that logs prompts |
 | `claude-security` plugin | Enabled in `.claude/settings.json`; scans each ticket branch's diff before its PR (`/claude-security` to run by hand) |
 | `superpowers` plugin | Enabled in `.claude/settings.json`. Its skills drive each loop stage: brainstorming, plans, TDD, debugging, verification, code review |
 | `.mcp.json` | `chrome-devtools` MCP server, driving Microsoft Edge for browser verification |

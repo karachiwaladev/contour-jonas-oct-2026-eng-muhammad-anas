@@ -38,6 +38,10 @@ const DENY = [
   'git -c core.sshCommand="touch /tmp/pwned" fetch origin',
   'git -c core.fsmonitor="malware" status',
   'git fetch origin --upload-pack="touch /tmp/pwned"',
+  'rm -rf .claude/hooks',
+  'rm -rf .claude',
+  'rm -rf ./.claude/skills/ticket-screen',
+  'rm -rf .github',
   'gh pr merge 14 --squash',
   'gh pr review 14 --approve',
   'gh pr create --fill --auto',
@@ -126,6 +130,12 @@ const ALLOW = [
   'git -c user.name=bot commit -m "x"',
   'git submodule update --init',
   'grep -n "git checkout && push" .claude/hooks/tests/guard.test.mjs',
+  // FP1: operators inside a quoted string must not be read as separate commands.
+  'grep -n "fetch && git checkout" .claude/hooks/guard.mjs',
+  'echo "to reset, run git rm .claude/settings.json" >> notes.md',
+  // FP2: a commit message that only describes a dangerous command is data, not the command.
+  'git commit -m "guard: deny git push --force and the ext:: transport"',
+  "git commit -F - <<'MSG'\nguard: block git push --force and core.sshCommand\nMSG",
   'git add todo/index.html todo/tests/issue-9.verify.mjs',
   'git commit -m "Footer (#9)"',
   'git push -u origin ticket-9-footer',

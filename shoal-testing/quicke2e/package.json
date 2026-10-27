@@ -1,0 +1,14 @@
+{
+  "name": "shoal-testing-quicke2e",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Fast behavioural persona runs for the todo app using QuickE2E + the Jev model.",
+  "type": "module",
+  "scripts": {
+    "check": "quicke2e check specs/personas.spec.mjs --base http://127.0.0.1:8777",
+    "run:personas": "bash run.sh"
+  },
+  "devDependencies": {
+    "quicke2e": "^0.5.0"
+  }
+}

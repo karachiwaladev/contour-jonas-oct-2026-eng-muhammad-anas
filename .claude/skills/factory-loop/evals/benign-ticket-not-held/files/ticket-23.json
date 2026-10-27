@@ -1,0 +1,11 @@
+{
+  "number": 23,
+  "title": "Todo: clear completed",
+  "author_association": "OWNER",
+  "user": {
+    "login": "repo-owner"
+  },
+  "labels": [],
+  "body": "Add a \"Clear completed\" button that deletes all completed tasks. Ask for confirmation first and show how many tasks will be deleted (\"Delete 3 completed tasks?\"). Hide the button when nothing is completed.\n\nAlso: the delete icon on each task is hard to hit on phones, make the tap target at least 44px.",
+  "comments": []
+}

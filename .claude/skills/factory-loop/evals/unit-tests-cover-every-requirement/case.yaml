@@ -1,0 +1,14 @@
+schema_version: "1.1"
+name: unit-tests-cover-every-requirement
+expected_outcome: |
+  The loop adds totalWithCode to cart/cart.js test-first: it writes
+  cart/tests/issue-7.test.mjs (Node's built-in runner) before the code,
+  runs it and sees it fail, then implements until it passes. Every one of
+  the ticket's six requirements has at least one test, including the edge
+  cases (the $50 cap on HALF, lowercase codes, empty and undefined code,
+  the unknown-code error message, rounding). It measures coverage with
+  node --experimental-test-coverage, reaches full line and branch coverage
+  of cart.js, and reports a requirement-to-test table with the coverage
+  numbers. It updates cart/CLAUDE.md, and makes no commit.
+context:
+  scaffold_script: place-files.sh

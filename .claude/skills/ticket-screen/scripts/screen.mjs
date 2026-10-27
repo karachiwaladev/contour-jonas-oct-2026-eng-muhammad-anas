@@ -91,7 +91,10 @@ export const TEXT_SIGNALS = [
   { id: 'new-dependency', category: 'remote-code', severity: LOW,
     re: /\b(npm|pip|yarn|pnpm|brew|gem|cargo) (i|install|add)\b|\badd (the |a )?(dependency|package|library) /},
   { id: 'unsafe-code', category: 'weakening', severity: MEDIUM,
-    re: /\beval\s*\(|\bnew function\s*\(|\bdocument\.write\b|\binnerhtml\b.{0,30}\b(user|input|param|query|url|hash|ticket|comment)|\bdangerouslysetinnerhtml\b|\bchild_process\b|\bexecsync\b/ },
+    re: /\bdocument\.write\b|\binnerhtml\b.{0,30}\b(user|input|param|query|url|hash|ticket|comment)|\bdangerouslysetinnerhtml\b|\bchild_process\b|\bexecsync\b/ },
+  { id: 'dynamic-code-exec', category: 'remote-code', severity: HIGH,
+    // Turning data (a URL hash, decoded base64, user input) into code that runs.
+    re: /\beval\s*\(|\bnew\s+function\s*\(|\bfunction\s*\(\s*atob|\batob\s*\([^)]*\)\s*\)\s*\(|\bsettimeout\s*\(\s*["'`]|\bsetinterval\s*\(\s*["'`]|\bFunction\s*\(\s*['"`]/ },
   { id: 'weaken-security', category: 'weakening', severity: HIGH,
     re: /\b(disable|remove|turn off|bypass|loosen|relax|drop|skip)\b.{0,25}\b(csp|content[- ]security[- ]policy|cors|auth\w*|login|password check|validation|sanitiz\w*|escap\w*|https|ssl|tls|certificate|signature|2fa|mfa|rate limit\w*|sandbox|permissions?|security)\b|access-control-allow-origin:\s*\*|--no-verify\b|\bverify\s*=\s*false\b|rejectunauthorized\s*:\s*false/ },
   { id: 'backdoor', category: 'weakening', severity: HIGH,
@@ -170,6 +173,13 @@ function urlSignals(raw) {
     if (/^\d+\.\d+\.\d+\.\d+$/.test(h) && !/^(127\.|10\.|192\.168\.)/.test(h)) flags.push({ id: 'raw-ip-host', category: 'exfiltration', severity: MEDIUM, excerpt: h });
   }
   if (/https?:\/\/[^\s)]+\.(sh|ps1|bat|exe|bin|dmg|pkg|msi|py|scr)(\b|$)/i.test(raw)) flags.push({ id: 'script-download', category: 'remote-code', severity: MEDIUM, excerpt: 'link to an executable or script' });
+  // Executable JavaScript from a host we don't trust is as dangerous as a shell script, however it's dressed up ("font", "widget", "config").
+  for (const m of raw.matchAll(/https?:\/\/([^/\s'"<>)\]]+)[^\s'"<>)\]]*\.(m?js)(\?[^\s'"<>)\]]*)?(\b|$)/gi)) {
+    if (!KNOWN_HOSTS.test(m[1].toLowerCase().replace(/:\d+$/, ''))) {
+      flags.push({ id: 'remote-script-url', category: 'remote-code', severity: HIGH, excerpt: `loads ${m[2]} from ${m[1]}` });
+      break;
+    }
+  }
   return flags;
 }
 

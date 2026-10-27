@@ -36,6 +36,7 @@ When something grows past a few lines here, move it into the right project folde
 | `README.md` | Workshop brief: how tickets, scoring and pushing work |
 | `.claude/skills/factory-loop/` | The ticket loop skill: fetch, react, comment, close |
 | `.claude/skills/ticket-screen/` | Screens tickets, plans and diffs for hostile requests; held tickets get `needs-human-review` until a person adds `screen-approved` |
+| `.claude/skills/self-improve/` | Self-improvement round: trace real problems, fix the top few test-first on a branch, open one PR. `/self-improve`. Log in `docs/improvement-log.md` |
 | `.claude/settings.json` | Permissions (`gh issue comment`/`close`), the guard and Stop hooks |
 | `.claude/hooks/` | `guard.mjs` (PreToolUse: blocks destructive, secret-reading and exfiltrating calls; tests in `hooks/tests/`) and the Stop hook that logs prompts |
 | `claude-security` plugin | Enabled in `.claude/settings.json`; scans each ticket branch's diff before its PR (`/claude-security` to run by hand) |

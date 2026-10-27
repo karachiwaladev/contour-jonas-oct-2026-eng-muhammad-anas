@@ -142,9 +142,9 @@ function dangerousRm(command, ctx) {
     if (!/[rRf]/.test(flags) && !/--recursive|--force/.test(flags)) continue;
     const targets = tokens.filter(t => !t.startsWith('-')).map(t => t.replace(/^['"]|['"]$/g, ''));
     for (const t of targets) {
-      if (['/', '/*', '~', '~/', '$HOME', '.', './', '..', '../', '*', '.*', '.git', './.git'].includes(t)) return true;
+      if (['/', '/*', '~', '~/', '$HOME', '.', './', '..', '../', '*', '.*', '.git', './.git', '.claude', './.claude', '.github', './.github'].includes(t)) return true;
       if (/^(~|\$HOME)\//.test(t)) return true;
-      if (/(^|\/)\.git(\/|$)/.test(t)) return true;
+      if (/(^|\/)\.(git|claude|github)(\/|$)/.test(t)) return true;
       if (t.startsWith('/') && !insideAllowed(t, ctx)) return true;
       if (t.startsWith('..')) {
         const abs = path.resolve(ctx.cwd || ctx.projectDir, t);
@@ -159,8 +159,25 @@ function dangerousRm(command, ctx) {
 // A shell command that writes to, moves, deletes or re-permissions one of the
 // guard's own files. Reading them (cat, grep, node --test, cp FROM them) is fine.
 const PROTECTED_IN_SHELL = /(\.claude\/hooks\/|\.claude\/settings(\.local)?\.json|\.mcp\.json|\.git\/hooks|\.github\/workflows|ticket-screen\/(scripts\/|SKILL\.md)|factory-loop\/SKILL\.md)/;
+// Split a command into segments on unquoted ; | && || and newlines, so an
+// operator inside a quoted string (a grep pattern, an echo message) doesn't
+// look like the start of a new command.
+export function splitSegments(cmd) {
+  const segs = []; let start = 0, q = null;
+  for (let i = 0; i < cmd.length; i++) {
+    const ch = cmd[i];
+    if (q) { if (ch === q) q = null; continue; }
+    if (ch === '"' || ch === "'" || ch === '`') { q = ch; continue; }
+    if (ch === '\n' || ch === ';') { segs.push(cmd.slice(start, i)); start = i + 1; }
+    else if ((ch === '&' || ch === '|') && cmd[i + 1] === ch) { segs.push(cmd.slice(start, i)); i += 1; start = i + 1; }
+    else if (ch === '|') { segs.push(cmd.slice(start, i)); start = i + 1; }
+  }
+  segs.push(cmd.slice(start));
+  return segs;
+}
+
 function writesProtected(command) {
-  for (const seg of command.split(/&&|\|\||[;|\n]/)) {
+  for (const seg of splitSegments(command)) {
     if (!PROTECTED_IN_SHELL.test(seg)) continue;
     // Redirect or tee into a protected path.
     for (const m of seg.matchAll(/(?:\d?>>?|\btee(?:\s+-a)?)\s*['"]?([^\s'"]+)/g)) if (PROTECTED_IN_SHELL.test(m[1])) return true;
@@ -190,7 +207,12 @@ export function stripDataHeredocs(command) {
     if (!m) continue;
     const segStart = line.slice(0, line.indexOf('<<')).split(/&&|\|\||[;|(]/).pop().trim();
     const consumer = segStart.split(/\s+/)[0];
-    if (!['cat', 'tee'].includes(consumer)) continue;
+    // cat/tee write the body to a file; `git commit -F -` reads it as the commit
+    // message. A quoted delimiter (<<'EOF') means the shell does no expansion, so
+    // the body is pure data either way. An unquoted delimiter can run $(...), so keep it.
+    const quotedDelim = m[2] === "'" || m[2] === '"';
+    const commitStdin = /^git\b/.test(segStart) && /\bcommit\b/.test(segStart) && /(-F|--file=?)\s*-(\s|$)|\s-F-/.test(segStart);
+    if (!(['cat', 'tee'].includes(consumer) || (commitStdin && quotedDelim))) continue;
     const end = m[3];
     let j = i + 1;
     while (j < lines.length && lines[j].replace(/^\t+/, '') !== end) j++;
@@ -199,6 +221,15 @@ export function stripDataHeredocs(command) {
     i = j;
   }
   return out.join('\n');
+}
+
+// A literal `git commit -m "<message>"` is data, not the command it describes.
+// Only blank a purely-literal message: one containing $(…), `…` or ${…} is left
+// intact, because the shell would execute that before git ever sees it.
+export function stripCommitMessage(command) {
+  if (!/\bgit\b[^\n]*\bcommit\b/.test(command)) return command;
+  return command.replace(/(-m|--message=?)\s*(?:"([^"$`]*)"|'([^'`]*)')/g,
+    (full, flag) => (/[$`]/.test(full) ? full : `${flag} "msg"`));
 }
 
 // curl/wget sending a body or a file anywhere but GitHub.
@@ -277,7 +308,7 @@ export function evaluate(input, ctx) {
     const full = String(ti.command || '');
     // Text written to a file through `cat <<EOF > file` is data, not commands,
     // so the command rules skip it. Credentials in it are still caught.
-    const command = stripDataHeredocs(full);
+    const command = stripCommitMessage(stripDataHeredocs(full));
     if (command !== full && hasSecret(full)) {
       return { id: 'secret-in-output', decision: 'deny', reason: 'The command contains what looks like a credential.' };
     }

@@ -2,6 +2,22 @@
 
 A record of self-improvement rounds (`/self-improve`), newest first. Each round: what was traced, what changed, what was dropped. Later rounds read this so settled work isn't redone.
 
+## Round 3 — 2026-10-27 (stacked on round 2)
+
+**Traced** — re-probed the guard from a file. The probe surfaced one new **under-block** (worse than the deferred FPs) plus confirmed the two deferred false positives.
+
+**Fixed (test-first, 3 findings)**
+1. **Under-block: `rm -rf .claude/hooks` (and `rm -rf .claude`, `.github`) was allowed.** `PROTECTED_IN_SHELL` only matched `.claude/hooks/` *with* a trailing slash, and `dangerousRm` only special-cased `.git`, so deleting the guard's own directory slipped through. `dangerousRm` now treats `.claude` and `.github` like `.git` (bare or with a path, `./`-prefixed or not). Deleting the guard is denied.
+2. **FP (deferred from round 2): quote-unaware segment split.** `writesProtected` split on `&&`/`;`/`|` ignoring quotes, so `grep -n "a && git checkout" .claude/hooks/guard.mjs` was read as a protected-path `git checkout` and denied. New `splitSegments` splits only on *unquoted* operators. A genuinely quoted path (`rm ".claude/hooks/guard.mjs"`) is still denied.
+3. **FP (deferred from round 2): commit message scanned as a command.** A `git commit -m "…"` / `-F -` heredoc describing a dangerous command was blocked. `stripDataHeredocs` now also treats a `git commit -F -` body with a **quoted** delimiter as data, and `stripCommitMessage` blanks a literal `-m` message. **Both keep the hole shut:** a message containing `$(…)`, backticks or `${…}` (which the shell executes) is left intact and still scanned — verified `git commit -m "x $(curl …|sh)"` still denies.
+
+**Verification**
+- Screen + guard suites: **198/198 green** (190 + 4 new deny, +4 new allow).
+- Adversarial re-probe: the 3 fixes pass; `rm` of the guard dir, command-substitution in a message, `curl|sh`, a quoted-path `rm`, an unquoted heredoc to `sh`, and `commit && rm -rf .claude` **all still deny**.
+
+**Deferred to the user**
+- None. The round-2 deferred items are now fixed. This is round 3 of the sitting, so the self-improve loop has reached its stop condition (3 rounds); further rounds run on the 10-minute schedule.
+
 ## Round 2 — 2026-10-27 (stacked on round 1)
 
 **Traced**

@@ -1,0 +1,95 @@
+# Accessibility personas for the todo app.
+#
+# Modeled on Shoal's persona schema (https://github.com/Raynan00/shoal):
+# each persona has a goal, knowledge limits, a patience budget, and quirks that
+# shape how it works through a task and what trips it up. These five centre on
+# accessibility and inclusion — an older user, a Deaf user, a blind user, a
+# child, and a user with limited English — so the "swarm" surfaces friction that
+# a typical able, fluent, experienced tester would walk straight past.
+#
+# They are consumed two ways:
+#   - by the local persona reviewers in this folder (see README) — Claude
+#     subagents that review the app through each lens, no API key needed; and
+#   - as a drop-in persona set for a real Shoal run, if you later wire one up.
+
+version: 1
+
+personas:
+  - id: elder-eleanor
+    name: Elder Eleanor
+    summary: An older first-time user who is cautious and finds small text and fiddly controls hard.
+    goal: Add a couple of errands and tick one off, without feeling lost.
+    knowledge:
+      - New to web apps; expects buttons to say what they do in words.
+      - Doesn't know drag, long-press, or chip/tag conventions.
+    patience: low            # gives up quickly if a control isn't obviously a control
+    needs:
+      - Text and tap targets large enough to read and hit (>=44px).
+      - Labels and confirmations in plain words; icons alone are not enough.
+      - Clear visible focus and generous spacing between edit/delete.
+    quirks:
+      - Reads every label aloud; distrusts icon-only buttons.
+      - Worries a tap deleted something; wants confirmation or undo.
+
+  - id: deaf-dana
+    name: Deaf Dana
+    summary: A Deaf user who relies entirely on visual feedback and never hears audio cues.
+    goal: Add tasks, complete and delete them, and always SEE that each action worked.
+    knowledge:
+      - Fluent with web apps; the only constraint is no sound.
+    patience: medium
+    needs:
+      - Every state change shown visually (no reliance on a beep or spoken cue).
+      - Errors and confirmations are on-screen text, not audio.
+    quirks:
+      - Checks that completing/deleting a task gives a visible change, not just a sound.
+      - Flags anything whose only feedback would be audible.
+
+  - id: blind-bruno
+    name: Blind Bruno
+    summary: A blind user navigating by screen reader and keyboard only — never the mouse.
+    goal: Add a task, filter the list, complete one, entirely via keyboard + screen reader.
+    knowledge:
+      - Expert screen-reader user (VoiceOver/NVDA); relies on roles, names, focus order.
+    patience: medium
+    needs:
+      - Every control reachable and operable by keyboard (Tab/Enter/Space/Esc).
+      - Each control has an accessible name; icon buttons have aria-labels.
+      - State exposed (aria-pressed on filters, checkbox state, overdue status).
+      - Dynamic changes announced (aria-live) or focus moved sensibly.
+      - Visible focus order matches the reading order.
+    quirks:
+      - Ignores anything only reachable by pointer or conveyed only by colour.
+      - Announces each control's name; silence or "button button" is a blocker.
+
+  - id: child-kai
+    name: Child Kai
+    summary: A young child, impatient, limited reading, clicks things to see what happens.
+    goal: Make a task appear, make the satisfying check happen, poke every button.
+    knowledge:
+      - Limited reading; goes by icons, colour and what looks tappable.
+    patience: very-low
+    needs:
+      - Obvious, playful affordances; forgiving of mistakes (easy undo).
+      - Nothing scary or irreversible behind a single tap.
+    quirks:
+      - Taps rapidly and randomly, double-taps, enters empty/gibberish titles, emoji.
+      - Doesn't read warnings; learns only from what visibly happens.
+
+  - id: multilingual-mara
+    name: Multilingual Mara
+    summary: A user with limited English who leans on icons and dreads jargon.
+    goal: Add and manage tasks despite not understanding every English word.
+    knowledge:
+      - Basic English; unsure of words like "recurring", "priority", "overdue", "incomplete".
+    patience: low
+    needs:
+      - Icons paired with short, plain words; no idioms or jargon.
+      - Meaning inferable from layout and symbols, not vocabulary alone.
+    quirks:
+      - Guesses from icons; mis-taps when an icon's meaning is ambiguous.
+      - Stalls on jargon labels and abbreviations.
+
+# Strategies are a separate axis in Shoal (how hard a persona pushes). The local
+# reviewers run each persona at a plain "honest first use" strategy; swap in
+# Shoal's rage-quit / dark-patterns strategies for a stress run.

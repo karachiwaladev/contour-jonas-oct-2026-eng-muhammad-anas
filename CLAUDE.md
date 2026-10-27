@@ -48,6 +48,7 @@ When something grows past a few lines here, move it into the right project folde
 | Folder | Ticket | What it is |
 |--------|--------|------------|
 | `todo/` | #4, #5, #6, #13 | Todo app: tasks with due dates, tags, recurrence and priority, stored in IndexedDB. See `todo/CLAUDE.md` |
+| `shoal-testing/` | — | Persona AI-user testing for the todo app (Shoal-style): accessibility personas run as local Claude subagents; friction report in `findings/`. See `shoal-testing/README.md` |
 
 ### Answered tickets (no code)
 

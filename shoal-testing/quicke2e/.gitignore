@@ -1,0 +1,6 @@
+node_modules/
+results/
+package-lock.json
+# Playwright browser downloads land in the user cache, not here, but just in case:
+.playwright/
+*.log

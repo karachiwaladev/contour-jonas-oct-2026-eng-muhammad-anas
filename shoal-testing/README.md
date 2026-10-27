@@ -23,7 +23,31 @@ To refresh the review: ask Claude Code, in this repo, to
 subagent per persona in [`personas.yaml`](personas.yaml) and re-collates the
 report. (A persona reviewer only reads the app and reports; it changes nothing.)
 
-### 2. A real Shoal run (needs a key) — opt-in
+### 2. QuickE2E + Jev — fast behavioural runs (uses your key) — opt-in
+For a **fast** pass, [`quicke2e/`](quicke2e/) drives a real browser with
+[QuickE2E](https://github.com/dmoka/quicke2e) and the **Jev** decision model
+(~300 ms/decision). Each persona becomes a plain-English flow (goal + assertions)
+in [`quicke2e/specs/personas.spec.mjs`](quicke2e/specs/personas.spec.mjs); the
+model clicks toward the goal and code checks the result. This answers *"can each
+persona complete its task-path?"* — fast. The **accessibility depth** (ARIA,
+labels, screen reader) stays with mode 1's subagent reviewers.
+
+```bash
+cd quicke2e
+npm install && npx playwright install chromium
+bash run.sh --check     # validate the specs — NO model calls, no key
+bash run.sh             # real runs — loads your key, makes paid calls
+```
+
+`run.sh` loads your Jev key from the gitignored `.claude/.env` (`jev_api_key=…`)
+**at runtime only** — never committed, logged, or printed — and maps it to
+`OPENROUTER_API_KEY`, which QuickE2E's `jev` engine reads. The jev engine sends
+each page's URL/title/elements/goal to OpenRouter (a third party) and spends on
+your key; it's our own todo app, so no secrets leave. If the key is a Vercel AI
+Gateway key instead, use `--engine vercel`; the keyless `local` engine (Apple
+Silicon) needs no key. `node_modules/` and `results/` are gitignored.
+
+### 3. A real Shoal run (needs a key) — opt-in
 `personas.yaml` is written to Shoal's persona schema, so you can drop it into a
 real Shoal checkout and drive actual browsers:
 

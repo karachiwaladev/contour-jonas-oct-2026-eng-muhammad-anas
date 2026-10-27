@@ -1,2 +1,4 @@
 .claude/guard-log.jsonl
 .claude/skills/*-workspace/
+.env
+

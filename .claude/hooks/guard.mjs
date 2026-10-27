@@ -46,6 +46,12 @@ const BASH_RULES = [
     test: c => new RegExp(`\\bgit\\b${SEG}\\bpush\\b${SEG}(\\s--delete\\b|\\s-d\\b|\\s:\\S)`).test(c) },
   { id: 'git-destructive', decision: 'deny', reason: 'This git command throws work away or rewrites history.',
     test: c => new RegExp(`\\bgit\\b${SEG}\\s(reset\\s${SEG}--hard|clean\\s${SEG}-[a-zA-Z]*f|rebase\\b|filter-branch|filter-repo|update-ref\\s${SEG}-d|reflog\\s+expire|branch\\s${SEG}(-D\\b|--delete\\s${SEG}--force|-[a-zA-Z]*D))`).test(c) },
+  { id: 'git-code-execution', decision: 'deny', reason: 'This git transport or config option runs an arbitrary command.',
+    // ext::/fd:: transports, and the -c config keys / --pack options git uses to run a helper, are remote-code-execution vectors.
+    test: c => /\bgit\b/.test(c) && (
+      /(^|[\s"'=:(])(ext|fd)::/.test(c)
+      || /\s-c\s+(core\.(sshcommand|fsmonitor|gitproxy|pager|editor|askpass|hookspath)|protocol\.[\w.]*\.allow|uploadpack\.packobjectshook|diff\.external|sendemail\.smtpserver)/i.test(c)
+      || /\s--(upload-pack|receive-pack|exec)[=\s]/.test(c)) },
   { id: 'git-discard-all', decision: 'ask', reason: 'Discarding all local changes needs a person to confirm.',
     test: c => new RegExp(`\\bgit\\b${SEG}\\s(checkout|restore)\\s+(--\\s+)?\\.(\\s|$)`).test(c) },
   { id: 'git-remote-or-config', decision: 'deny', reason: 'Changing remotes or global git config could send the code somewhere else.',

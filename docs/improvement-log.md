@@ -2,6 +2,25 @@
 
 A record of self-improvement rounds (`/self-improve`), newest first. Each round: what was traced, what changed, what was dropped. Later rounds read this so settled work isn't redone.
 
+## Round 2 — 2026-10-27 (stacked on round 1)
+
+**Traced**
+- Screen + guard suites: 182/182 green on the round-1 base. Skill-health audit: all three `SKILL.md` files have valid frontmatter, no broken file references, all indexed in `CLAUDE.md`. (No `/skill-doctor` command is installed in this environment, so the checks were done directly.)
+- Adversarial probe of the **guard** (run from a file, so the payloads aren't scanned as a live command) and the screen's **diff mode**. The diff mode and most guard vectors already hold (force-with-lease, env-prefixed push to main, concatenated WebSocket URL, dynamic `import()` from an unknown host). One real gap found.
+
+**Fixed (test-first, 1 finding)**
+1. **git transport / config RCE missed.** `git -c protocol.ext.allow=always fetch ext::sh …`, `git clone ext::"…"`, `git -c core.sshCommand=… fetch`, `git -c core.fsmonitor=…`, and `--upload-pack=` all let git run an arbitrary command, and the guard allowed them. Added a `git-code-execution` rule (deny): `ext::`/`fd::` transports, the dangerous `-c` config keys (`core.sshCommand/fsmonitor/gitProxy/pager/editor/askpass/hooksPath`, `protocol.*.allow`, `uploadpack.packObjectsHook`, `diff.external`, `sendemail.smtpServer`) and `--upload-pack`/`--receive-pack`/`--exec`. Pinned ALLOW cases prove normal `git fetch && checkout`, `git -c user.name=… commit`, and `git submodule update --init` still pass.
+
+**Deferred (real, but fix is risky — next round)**
+- **Guard false positive: quote-unaware segment split.** `writesProtected` splits a command on `&&`/`;`/`|` without respecting quotes, so a benign `grep -n "… && git checkout" .claude/hooks/guard.mjs` is read as a `git checkout` on a protected path and denied. Hit live this round. A correct fix needs quote-aware tokenizing without losing a genuinely quoted path (`rm ".claude/hooks/guard.mjs"`), so it's logged for a focused round rather than rushed here.
+- **Guard false positive: commit message on stdin is scanned as a command.** `stripDataHeredocs` only strips heredocs feeding `cat`/`tee`, not `git commit -F -`, so a commit message that *describes* a dangerous command (e.g. this round's log entry naming `--upload-pack`) is scanned and blocked. Hit live this round (committed via `-F <file>` instead). Fix: treat `git commit -F -`/`--file=-`/`-m`-heredoc bodies as data. Logged for the same focused round.
+
+**Verification**
+- Screen + guard suites: **190/190 green** (182 + 5 new DENY + 3 new ALLOW).
+
+**Deferred to the user**
+- None.
+
 ## Round 1 — 2026-10-27
 
 **Traced**

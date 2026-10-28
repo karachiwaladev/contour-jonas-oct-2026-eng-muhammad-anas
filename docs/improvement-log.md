@@ -2,6 +2,23 @@
 
 A record of self-improvement rounds (`/self-improve`), newest first. Each round: what was traced, what changed, what was dropped. Later rounds read this so settled work isn't redone.
 
+## Round 4 — 2026-10-28 (todo app)
+
+**Traced** — the shoal-testing persona reviews (Kai, Dana) flagged a recurring-task duplicate-spawn bug. Per "verify before trusting a lead," confirmed it two ways:
+- **Code read:** `check.onclick = async () => { await toggleDone(db, task); refresh(db); }` captures the render-time `task`; `toggleDone` guards on `!task.spawnedNext && !task.done` from that **stale** object, so two clicks before `refresh` both enter the spawn branch and each `tasks.add` a next occurrence.
+- **Test:** a new `todo/tests/recurring-duplicate.verify.mjs` double-taps a daily recurring task's check and counts stored tasks — **failed 2/3** (3 tasks instead of 2).
+
+**Fixed (test-first, 1 finding)**
+- Disable the check button synchronously before the await: `check.onclick = async () => { check.disabled = true; await toggleDone(db, task); refresh(db); }`. A disabled button fires no further clicks, so the second rapid tap is a no-op; `refresh` rebuilds a fresh (enabled) button. Smallest fix that closes the race without adding a DB read or debounce.
+
+**Verification**
+- `recurring-duplicate.verify.mjs`: **3/3**. Regressions: issue-5 **18/18**, issue-6 (recurring) **16/16**, issue-13 **27/27** — normal recurring completion still spawns exactly one occurrence.
+
+**Deferred to the user** (need a product/design call, raised as suggested tickets, not auto-fixed)
+- Delete has no undo/confirm (hit by 4/5 personas) — undo snackbar vs confirm is a UX choice.
+- Screen-reader focus management after complete/delete + an `aria-live` region.
+- Double-submit on Add; jargon/plain-language pass.
+
 ## Round 3 — 2026-10-27 (stacked on round 2)
 
 **Traced** — re-probed the guard from a file. The probe surfaced one new **under-block** (worse than the deferred FPs) plus confirmed the two deferred false positives.

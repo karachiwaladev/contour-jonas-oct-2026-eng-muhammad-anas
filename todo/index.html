@@ -628,7 +628,9 @@ function render(db, items) {
     const check = li.querySelector('.check');
     check.setAttribute('aria-pressed', task.done);
     check.setAttribute('aria-label', `Mark "${task.title}" ${task.done ? 'not done' : 'done'}`);
-    check.onclick = async () => { await toggleDone(db, task); refresh(db); };
+    // Disable synchronously so a fast double-tap can't fire toggleDone twice on
+    // the stale task (which would spawn two next occurrences); refresh rebuilds a fresh button.
+    check.onclick = async () => { check.disabled = true; await toggleDone(db, task); refresh(db); };
 
     const del = li.querySelector('.delete');
     del.setAttribute('aria-label', `Delete "${task.title}"`);

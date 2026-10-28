@@ -35,8 +35,10 @@ labels, screen reader) stays with mode 1's subagent reviewers.
 ```bash
 cd quicke2e
 npm install && npx playwright install chromium
-bash run.sh --check     # validate the specs — NO model calls, no key
-bash run.sh             # real runs — loads your key, makes paid calls
+bash run.sh --check               # validate the specs — NO model calls, no key
+bash run.sh                       # real run, engine jev (OpenRouter key)
+bash run.sh --engine vercel       # Jev via Vercel AI Gateway (AI_GATEWAY_API_KEY)
+bash run.sh --engine local        # local open model, no key (Apple Silicon)
 ```
 
 `run.sh` loads your Jev key from the gitignored `.claude/.env` (`jev_api_key=…`)

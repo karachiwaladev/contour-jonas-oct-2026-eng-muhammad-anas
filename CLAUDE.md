@@ -42,14 +42,14 @@ When something grows past a few lines here, move it into the right project folde
 | `claude-security` plugin | Enabled in `.claude/settings.json`; scans each ticket branch's diff before its PR (`/claude-security` to run by hand) |
 | `superpowers` plugin | Enabled in `.claude/settings.json`. Its skills drive each loop stage: brainstorming, plans, TDD, debugging, verification, code review |
 | `.mcp.json` | `chrome-devtools` MCP server, driving Microsoft Edge for browser verification |
+| `tests/` | Repo-level integrity checks (e.g. this index has no duplicate project rows, stays under 100 lines): `node --test tests/*.test.mjs` |
 
 ### Projects
 
 | Folder | Ticket | What it is |
 |--------|--------|------------|
-| `todo/` | #4, #5, #6, #13 | Todo app: tasks with due dates, tags, recurrence and priority, stored in IndexedDB. See `todo/CLAUDE.md` |
-| `shoal-testing/` | — | Persona AI-user testing for the todo app (Shoal-style): accessibility personas run as local Claude subagents (friction report in `findings/`), plus a fast behavioural path in `quicke2e/` using QuickE2E + the Jev model. See `shoal-testing/README.md` |
 | `todo/` | #4, #5, #6, #13, #19 | Todo app: tasks with due dates, tags, recurrence, priority and search, stored in IndexedDB. See `todo/CLAUDE.md` |
+| `shoal-testing/` | — | Persona AI-user testing for the todo app (Shoal-style): accessibility personas run as local Claude subagents (friction report in `findings/`), plus a fast behavioural path in `quicke2e/` using QuickE2E + the Jev model. See `shoal-testing/README.md` |
 
 ### Answered tickets (no code)
 

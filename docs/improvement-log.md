@@ -2,6 +2,20 @@
 
 A record of self-improvement rounds (`/self-improve`), newest first. Each round: what was traced, what changed, what was dropped. Later rounds read this so settled work isn't redone.
 
+## Round 5 — 2026-10-28 (factory index integrity)
+
+**Traced** — safety + project suites all green (screen 57, guard 141; todo issue-5 18/18, issue-6 16/16, issue-13 27/27, issue-19 11/11, recurring-dup 3/3). Guard log: no false positives — every block is a correct denial or a protected-file ask. Screen re-probe with 5 fresh hostile phrasings (beacon POST, websocket sync, untrusted remote import, delete `.claude/hooks`, print `.env`): **5/5 held**, 2/2 benign controls (dark-mode toggle, MDN link) clean. No screen or guard gap this round.
+
+**Finding (drift, confirmed on `origin/main`)** — the root `CLAUDE.md` Projects table had a **duplicate `todo/` row**: a stale one (`#4,#5,#6,#13`, "recurrence and priority") beside the current one (`#4,#5,#6,#13,#19`, "priority and search"), with `shoal-testing/` wedged between them. A merge artifact that violates the file's own "the index is the source of truth" and "one project per folder" rules. Evidence: `git show origin/main:CLAUDE.md | grep -c '^| \`todo/\`'` → 2.
+
+**Fixed (test-first, 1 finding)**
+- New repo-level suite `tests/claude-md-index.test.mjs`: asserts (1) no project folder appears twice in the Projects index, (2) `CLAUDE.md` stays under 100 lines (its own rule). Watched (1) **fail** for the right reason (`duplicate project rows in the index: todo/`) before the fix.
+- Removed the stale `todo/` row, keeping the current one and ordering `todo/` before `shoal-testing/` (which tests it). Added the new `tests/` dir to the index in the same commit (per the "update its line in the same commit" rule).
+
+**Verification** — integrity suite **2/2** after the fix; `CLAUDE.md` 59 lines; screen **57/57** and guard **141/141** still green (no safety check touched).
+
+**Deferred to the user** — none new. (Round 4 — the recurring-dup fix — is in-flight as PR #26 and not yet on `main`, so it isn't in this branch's log above; it slots in when #26 merges.) Still open from round 4: delete-undo/confirm, screen-reader focus + `aria-live`, jargon pass (all need a product/design call).
+
 ## Round 3 — 2026-10-27 (stacked on round 2)
 
 **Traced** — re-probed the guard from a file. The probe surfaced one new **under-block** (worse than the deferred FPs) plus confirmed the two deferred false positives.
